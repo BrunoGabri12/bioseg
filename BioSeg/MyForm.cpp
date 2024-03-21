@@ -24,21 +24,52 @@ void main(array<String^>^ args) {
 }
 
 
-int BioSeg::MyForm::runApplication(String^ path) {
+int BioSeg::MyForm::runApplication(String^ path, Boolean justOneImage) {
 
 	std::string pathImg = msclr::interop::marshal_as<std::string>(path);
 
-	processingImg::imageClass image; 
+
+		processingImg::imageClass image;
+		processingImg::imageClass imageResult;
+
+		processingImg::ManipulatorImg processor;
+		
+		processingImg::imgContainer vectorImgs(msclr::interop::marshal_as< std::string >(path));
+
+
+
+		if (justOneImage) {
+
+		image.setImg(pathImg.data());
+
+		//imagem original com o fundo segmentado 
+		processor.setImg(image);
+	
+
+		imageResult = methodOfSegmentation(image);
+		processor.setImg(imageResult);
+		int protese = processor.calcAreaProtese();
+		int biofilme = processor.calcAreaBiofilme();
+		float porcentagem = (float(biofilme) / float(protese)) * 100;
+
+
+		viewImage^ nextForm = gcnew viewImage(protese, biofilme, porcentagem, imageResult);
+		nextForm->ShowDialog();
+
+
+		}
+	return 0;
+}
+
+processingImg::imageClass BioSeg::MyForm::methodOfSegmentation(processingImg::imageClass image) {
+
+
 	processingImg::imageClass imageBackgroundSegmentation;
 	processingImg::imageClass imageBiofilmeClassification;
 	processingImg::imageClass imageResult;
-	
-	processingImg::ManipulatorImg processor; 
 
-	image.setImg(pathImg.data());
+	processingImg::ManipulatorImg processor;
 
-	//imagem original com o fundo segmentado
-	processor.setImg(image);
 	imageBackgroundSegmentation = processor.applyImageGaussianBlur(cv::Size(5, 5), 1, 1)
 		.applySplit(2)
 		.applyImageAdaptativeTheresholding(255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 1051, 0)
@@ -60,16 +91,6 @@ int BioSeg::MyForm::runApplication(String^ path) {
 	processor.setImg(imageBackgroundSegmentation);
 	imageResult = processor.paintBiofilme(imageBiofilmeClassification).build();
 
+	return imageResult;
 
-	processor.setImg(imageResult);
-	int protese = processor.calcAreaProtese();
-	int biofilme = processor.calcAreaBiofilme();
-	float porcentagem = (float(biofilme) / float(protese)) *100;
-
-
-
-	viewImage^ nextForm = gcnew viewImage(protese, biofilme,porcentagem,imageResult) ; 
-	nextForm->ShowDialog();
-	
-	return 0;
 }
